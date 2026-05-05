@@ -416,3 +416,4 @@ function editCurrentAction() {
     saveDB();
     history.go(-2); 
 }
+function toggleSort() { sortAsc = !sortAsc; document.getElementById('sortBtn').innerText = sortAsc ? 'الأقدم ⇅' : 'الأحدث ⇅'; renderList(); }
