@@ -83,64 +83,39 @@ function customAlert(msg, title = 'تنبيه') {
 
 function updateGlobalRate() { 
     globalRate = document.getElementById('global-rate').value; 
-    if(globalRate) { localStorage.setItem('abuFayezRate', globalRate); calcCurrency('usd'); }
+    if(globalRate) { 
+        localStorage.setItem('abuFayezRate', globalRate); 
+        calcCurrency('usd'); 
+        updateTotals(); // ضفناها لتتحدث الواجهة فوراً
+    }
 }
 
-function calcCurrency(s) {
-    const u = document.getElementById('in-usd'), l = document.getElementById('in-syp'), r = parseFloat(globalRate);
-    if(!r) return;
-    if(s==='usd' && u.value) l.value = (u.value*r).toFixed(0); 
-    else if(s==='syp' && l.value) u.value = (l.value/r).toFixed(2);
-    else { if(s==='usd') l.value = ''; if(s==='syp') u.value = ''; }
-}
-
-function initiateSave() {
-    const usd = parseFloat(document.getElementById('in-usd').value);
-    if (!usd) { customAlert('عبي المبالغ بالاول يا غالي!'); return; }
-    tempTx = { usd, syp: parseFloat(document.getElementById('in-syp').value), date: document.getElementById('in-date').value };
-    document.getElementById('in-reason').value = '';
-    selectTypeForSave('تصميد');
-    openModal('type-modal');
-}
-
-function selectTypeForSave(t) {
-    selectedTypeForSave = t;
-    document.querySelectorAll('.btn-type').forEach(b => b.classList.toggle('selected', b.dataset.type === t));
-}
-
-function finalizeSave() {
-    transactions.push({ id: Date.now(), type: selectedTypeForSave, ...tempTx, reason: document.getElementById('in-reason').value });
-    saveDB();
-    document.getElementById('in-usd').value = ''; document.getElementById('in-syp').value = '';
-    history.back(); 
-    updateTotals();
-}
+// ... خلي الدوال اللي بيناتهم متل ما هي ...
 
 function updateTotals() {
-    let s = { 'تصميد':{u:0,l:0}, 'حوالة':{u:0,l:0}, 'مشتريات':{u:0,l:0} };
-    transactions.forEach(t => { s[t.type].u += t.usd; s[t.type].l += t.syp; });
+    let s = { 'تصميد':{u:0}, 'حوالة':{u:0}, 'مشتريات':{u:0} };
+    transactions.forEach(t => { s[t.type].u += t.usd; }); // بنجمع بس الدولار
     
+    let rate = parseFloat(globalRate) || 15000; // بناخد سعر الصرف الحالي
+
+    // بنضرب مجموع الدولار بسعر الصرف الحالي لليرة
     document.getElementById('tot-save-usd').innerText = `$${formatEn(s['تصميد'].u)}`;
-    document.getElementById('tot-save-syp').innerText = `${formatEn(s['تصميد'].l)} ل.س`;
+    document.getElementById('tot-save-syp').innerText = `${formatEn(s['تصميد'].u * rate)} ل.س`;
     
     document.getElementById('tot-trans-usd').innerText = `$${formatEn(s['حوالة'].u)}`;
-    document.getElementById('tot-trans-syp').innerText = `${formatEn(s['حوالة'].l)} ل.س`;
+    document.getElementById('tot-trans-syp').innerText = `${formatEn(s['حوالة'].u * rate)} ل.س`;
     
     document.getElementById('tot-buy-usd').innerText = `$${formatEn(s['مشتريات'].u)}`;
-    document.getElementById('tot-buy-syp').innerText = `${formatEn(s['مشتريات'].l)} ل.س`;
+    document.getElementById('tot-buy-syp').innerText = `${formatEn(s['مشتريات'].u * rate)} ل.س`;
     
-    // المحاسبة الجديدة:
     let remSaveUsd = s['تصميد'].u - s['حوالة'].u;
-    let remSaveSyp = s['تصميد'].l - s['حوالة'].l;
-    
     let remPocketUsd = s['حوالة'].u - s['مشتريات'].u;
-    let remPocketSyp = s['حوالة'].l - s['مشتريات'].l;
 
     document.getElementById('tot-rem-save-usd').innerText = `$${formatEn(remSaveUsd)}`;
-    document.getElementById('tot-rem-save-syp').innerText = `${formatEn(remSaveSyp)} ل.س`;
+    document.getElementById('tot-rem-save-syp').innerText = `${formatEn(remSaveUsd * rate)} ل.س`;
 
     document.getElementById('tot-rem-pocket-usd').innerText = `$${formatEn(remPocketUsd)}`;
-    document.getElementById('tot-rem-pocket-syp').innerText = `${formatEn(remPocketSyp)} ل.س`;
+    document.getElementById('tot-rem-pocket-syp').innerText = `${formatEn(remPocketUsd * rate)} ل.س`;
 }
 
 function renderList() {
