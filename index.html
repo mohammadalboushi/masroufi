@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>إدارة مصروفي</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <button class="header-btn" id="backBtn" style="display:none;" onclick="history.back()">رجوع</button>
+        <h2 id="header-title">الرئيسية</h2>
+        <button class="header-btn dots-btn" id="menuBtn" onclick="openMenu()">⋮</button>
+        
+        <div class="modern-menu" id="menu">
+            <div class="rate-input-wrapper">
+                <span>سعر الصرف</span>
+                <input type="number" id="global-rate" lang="en" oninput="updateGlobalRate()">
+            </div>
+            <button class="menu-item" onclick="handleMenuAction('list')">
+                <span class="m-text">السجل الكامل</span>
+                <svg class="m-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </button>
+            <button class="menu-item" onclick="handleMenuAction('export')">
+                <span class="m-text">تصدير البيانات</span>
+                <svg class="m-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </button>
+            <button class="menu-item" onclick="handleMenuAction('import')">
+                <span class="m-text">استيراد البيانات</span>
+                <svg class="m-icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </button>
+            <button class="menu-item danger" onclick="handleMenuAction('clear')">
+                <span class="m-text">حذف كل البيانات</span>
+                <svg class="m-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
+            <input type="file" id="importFile" style="display: none" accept=".json" onchange="importData(event)">
+        </div>
+    </header>
+
+    <div id="view-home" class="view active">
+        <div class="wallet-card" onclick="gotoListView('all')">
+            <p>الصافي (الباقي)</p>
+            <h1 id="tot-rem-usd">$0</h1>
+            <div class="syp-val" id="tot-rem-syp">0 ل.س</div>
+        </div>
+
+        <div class="sub-cards">
+            <div class="sub-card" onclick="gotoListView('تصميد')">
+                <h3>تصميد</h3>
+                <div class="val c-save" id="tot-save-usd">$0</div>
+                <div class="syp-val" id="tot-save-syp">0 ل.س</div>
+            </div>
+            <div class="sub-card" onclick="gotoListView('حوالة')">
+                <h3>حوالات</h3>
+                <div class="val c-trans" id="tot-trans-usd">$0</div>
+                <div class="syp-val" id="tot-trans-syp">0 ل.س</div>
+            </div>
+            <div class="sub-card" onclick="gotoListView('مشتريات')">
+                <h3>مشتريات</h3>
+                <div class="val c-buy" id="tot-buy-usd">$0</div>
+                <div class="syp-val" id="tot-buy-syp">0 ل.س</div>
+            </div>
+        </div>
+
+        <div class="input-section">
+            <div class="flex-row">
+                <div class="input-box">
+                    <label>دولار ($)</label>
+                    <input type="number" id="in-usd" lang="en" oninput="calcCurrency('usd')" placeholder="0">
+                </div>
+                <div class="input-box">
+                    <label>ليرة (ل.س)</label>
+                    <input type="number" id="in-syp" lang="en" oninput="calcCurrency('syp')" placeholder="0">
+                </div>
+            </div>
+            <div class="input-box" style="margin-bottom: 15px;">
+                <label>تاريخ العملية</label>
+                <input type="date" id="in-date" lang="en">
+            </div>
+            <button class="main-btn" onclick="initiateSave()">تسجيل العملية</button>
+        </div>
+    </div>
+
+    <div id="view-list" class="view">
+        <div class="list-header">
+            <button class="header-btn" id="selectModeBtn" onclick="toggleSelectMode()">تحديد 🖱️</button>
+            <input type="month" id="month-picker" onchange="renderList()">
+            <button class="header-btn" id="sortBtn" onclick="toggleSort()">الأحدث ⇅</button>
+        </div>
+        <div class="total-badge"><span id="list-total-usd">$0</span></div>
+        <div id="list-container"></div>
+    </div>
+</div>
+
+<div class="selection-bar" id="selection-bar">
+    <button class="btn-cancel" onclick="history.back()">إلغاء</button>
+    <button class="action-btn" style="background: rgba(0,243,255,0.1); color: var(--neon-cyan); border: 1px solid var(--neon-cyan); padding:10px; margin:0;" onclick="toggleSelectAll()">تحديد الكل</button>
+    <button class="btn-delete-multi" onclick="requestMultiDelete()">حذف</button>
+</div>
+
+<div class="modal-overlay" id="type-modal" onclick="if(event.target === this) history.back()">
+    <div class="modal-content">
+        <h3>تفاصيل العملية</h3>
+        <div class="type-grid">
+            <button class="btn-type selected" data-type="تصميد" onclick="selectTypeForSave('تصميد')">تصميد</button>
+            <button class="btn-type" data-type="حوالة" onclick="selectTypeForSave('حوالة')">حوالة</button>
+            <button class="btn-type" data-type="مشتريات" onclick="selectTypeForSave('مشتريات')">مشتريات</button>
+        </div>
+        <input type="text" id="in-reason" placeholder="الملاحظة (اختياري)">
+        <button class="action-btn btn-confirm" onclick="finalizeSave()">حفظ العملية</button>
+        <button class="action-btn btn-cancel" onclick="history.back()">إلغاء</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="action-modal" onclick="if(event.target === this) history.back()">
+    <div class="modal-content">
+        <h3>خيارات العملية</h3>
+        <p id="action-info" style="color:var(--text-muted); margin-bottom:15px; font-family: Arial;"></p>
+        <button class="action-btn" style="background: rgba(0,243,255,0.1); color: var(--neon-cyan); border: 1px solid var(--neon-cyan);" onclick="editCurrentAction()">تعديل</button>
+        <button class="action-btn" style="background: rgba(255,59,48,0.1); color: var(--danger); border: 1px solid var(--danger);" onclick="deleteSingleAction()">حذف</button>
+        <button class="action-btn btn-cancel" onclick="history.back()">إلغاء</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="clear-modal" onclick="if(event.target === this) history.back()">
+    <div class="modal-content">
+        <h3 style="color: var(--danger);">حذف كل البيانات؟</h3>
+        <p style="color: var(--text-muted); margin-bottom: 20px; font-size: 0.9rem;">متأكد بدك تمسح السجل بالكامل؟</p>
+        <button class="action-btn" style="background: var(--danger); color: white;" onclick="executeClearAll()">إي، احذف</button>
+        <button class="action-btn btn-cancel" onclick="history.back()">تراجع</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="custom-confirm" onclick="if(event.target === this) history.back()">
+    <div class="modal-content">
+        <h3 style="color: var(--danger);">تأكيد الحذف</h3>
+        <p id="confirm-msg" style="color:var(--text-muted); margin-bottom: 20px; font-family: Arial; font-size: 0.9rem;"></p>
+        <button class="action-btn" style="background: var(--danger); color: white;" id="confirm-yes-btn">إي، احذف</button>
+        <button class="action-btn btn-cancel" onclick="history.back()">إلغاء</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="custom-alert" onclick="if(event.target === this) history.back()">
+    <div class="modal-content">
+        <h3 id="alert-title">تنبيه</h3>
+        <p id="alert-msg" style="color:var(--text-muted); margin-bottom: 20px; line-height: 1.5; font-size: 0.9rem;"></p>
+        <button class="action-btn btn-confirm" onclick="history.back()">حسناً</button>
+    </div>
+</div>
+
+<script src="script.js"></script>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js');
+        });
+    }
+</script>
+
+</body>
+</html>
