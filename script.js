@@ -7,7 +7,7 @@ function formatEn(num) { return Number(num).toLocaleString('en-US'); }
 
 // نظام التاريخ (History API) لزر الرجوع
 if (!history.state || !history.state.page) { history.replaceState({ page: 'home' }, ''); }
-function pushOverlay() { history.pushState({ page: history.state.page, overlay: true }, ''); }
+function pushOverlay() { history.pushState({ page: history.state ? history.state.page : 'home', overlay: true }, ''); }
 
 window.addEventListener('popstate', (e) => {
     document.getElementById('menu').classList.remove('active');
@@ -86,19 +86,48 @@ function updateGlobalRate() {
     if(globalRate) { 
         localStorage.setItem('abuFayezRate', globalRate); 
         calcCurrency('usd'); 
-        updateTotals(); // ضفناها لتتحدث الواجهة فوراً
+        updateTotals(); // لتتحدث الواجهة فوراً
     }
 }
 
-// ... خلي الدوال اللي بيناتهم متل ما هي ...
+function calcCurrency(s) {
+    const u = document.getElementById('in-usd'), l = document.getElementById('in-syp'), r = parseFloat(globalRate);
+    if(!r) return;
+    if(s==='usd' && u.value) l.value = (u.value*r).toFixed(0); 
+    else if(s==='syp' && l.value) u.value = (l.value/r).toFixed(2);
+    else { if(s==='usd') l.value = ''; if(s==='syp') u.value = ''; }
+}
+
+function initiateSave() {
+    const usd = parseFloat(document.getElementById('in-usd').value);
+    if (!usd) { customAlert('عبي المبالغ بالاول يا غالي!'); return; }
+    tempTx = { usd, syp: parseFloat(document.getElementById('in-syp').value), date: document.getElementById('in-date').value };
+    document.getElementById('in-reason').value = '';
+    selectTypeForSave('تصميد');
+    openModal('type-modal');
+}
+
+function selectTypeForSave(t) {
+    selectedTypeForSave = t;
+    document.querySelectorAll('.btn-type').forEach(b => b.classList.toggle('selected', b.dataset.type === t));
+}
+
+function finalizeSave() {
+    transactions.push({ id: Date.now(), type: selectedTypeForSave, ...tempTx, reason: document.getElementById('in-reason').value });
+    saveDB();
+    document.getElementById('in-usd').value = ''; document.getElementById('in-syp').value = '';
+    history.back(); 
+    updateTotals();
+}
 
 function updateTotals() {
     let s = { 'تصميد':{u:0}, 'حوالة':{u:0}, 'مشتريات':{u:0} };
-    transactions.forEach(t => { s[t.type].u += t.usd; }); // بنجمع بس الدولار
+    transactions.forEach(t => { 
+        if(s[t.type]) { s[t.type].u += t.usd; }
+    }); 
     
-    let rate = parseFloat(globalRate) || 15000; // بناخد سعر الصرف الحالي
+    let rate = parseFloat(globalRate) || 15000; 
 
-    // بنضرب مجموع الدولار بسعر الصرف الحالي لليرة
     document.getElementById('tot-save-usd').innerText = `$${formatEn(s['تصميد'].u)}`;
     document.getElementById('tot-save-syp').innerText = `${formatEn(s['تصميد'].u * rate)} ل.س`;
     
