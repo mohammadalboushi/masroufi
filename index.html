@@ -7,6 +7,10 @@
     
     <link rel="manifest" href="manifest.json">
     <link rel="stylesheet" href="style.css">
+
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -14,7 +18,10 @@
     <header>
         <button class="header-btn" id="backBtn" style="display:none;" onclick="history.back()">رجوع</button>
         <h2 id="header-title">الرئيسية</h2>
-        <button class="header-btn dots-btn" id="menuBtn" onclick="openMenu()">⋮</button>
+        <button class="header-btn dots-btn btn-more-container" id="menuBtn" onclick="openMenu()">
+            <span id="auth-status-dot" class="status-dot red"></span>
+            ⋮
+        </button>
         
         <div class="modern-menu" id="menu">
             <div class="rate-input-wrapper">
@@ -37,6 +44,15 @@
                 <span class="m-text">حذف كل البيانات</span>
                 <svg class="m-icon" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
             </button>
+            
+            <div style="height: 1px; background: rgba(255,255,255,0.05); margin: 4px 0;"></div>
+            
+            <button class="menu-item" id="btn-auth" onclick="toggleAuth()">
+                <img id="user-pic" src="" alt="" class="user-pic hidden" style="width: 20px; height: 20px; border-radius: 50%; margin-left: 8px;">
+                <svg id="auth-icon" class="m-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                <span class="m-text" id="auth-text" style="margin-right: auto;">تسجيل الدخول</span>
+            </button>
+            
             <input type="file" id="importFile" style="display: none" accept=".json" onchange="importData(event)">
         </div>
     </header>
@@ -145,9 +161,9 @@
 
 <div class="modal-overlay" id="custom-confirm" onclick="if(event.target === this) history.back()">
     <div class="modal-content">
-        <h3 style="color: var(--danger);">تأكيد الحذف</h3>
+        <h3 style="color: var(--danger);" id="confirm-title">تأكيد الحذف</h3>
         <p id="confirm-msg" style="color:var(--text-muted); margin-bottom: 20px; font-family: Arial; font-size: 0.9rem;"></p>
-        <button class="action-btn" style="background: var(--danger); color: white;" id="confirm-yes-btn">إي، احذف</button>
+        <button class="action-btn" style="background: var(--danger); color: white;" id="confirm-yes-btn">تأكيد</button>
         <button class="action-btn btn-cancel" onclick="history.back()">إلغاء</button>
     </div>
 </div>

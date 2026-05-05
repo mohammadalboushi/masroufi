@@ -1,9 +1,170 @@
+// إعدادات فايربيز
+const firebaseConfig = {
+  apiKey: "AIzaSyBB_U4C880PW4GxZd8FALv8yBSiP2mNeBY",
+  authDomain: "malaboushi.firebaseapp.com",
+  projectId: "malaboushi",
+  storageBucket: "malaboushi.firebasestorage.app",
+  messagingSenderId: "110336819350",
+  appId: "1:110336819350:web:2b1b0488e72b811f0602b7",
+  measurementId: "G-94ZT4TQYZY"
+};
+
+// تهيئة فايربيز
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const firestore = firebase.firestore();
+
+// تفعيل ميزة الأوفلاين السحابي
+firestore.enablePersistence().catch(function(err) {
+    console.log("Offline error: ", err.code);
+});
+
 let transactions = JSON.parse(localStorage.getItem('abuFayezDB')) || [];
 let globalRate = localStorage.getItem('abuFayezRate') || 15000;
+let currentUser = null;
+let unsubscribeSync = null;
+
 let tempTx = {}, selectedTypeForSave = 'تصميد', currentListView = 'all', sortAsc = false, selectedActionId = null;
 let isSelectMode = false, selectedIds = new Set(), currentFilteredList = [];
 
 function formatEn(num) { return Number(num).toLocaleString('en-US'); }
+
+// ====== التخزين السحابي وتسجيل الدخول ======
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  const dot = document.getElementById('auth-status-dot');
+  const authText = document.getElementById('auth-text');
+  const authIcon = document.getElementById('auth-icon');
+  const userPic = document.getElementById('user-pic');
+
+  if (user) {
+    dot.className = 'status-dot green';
+    authText.textContent = 'تسجيل الخروج';
+    authIcon.classList.add('hidden');
+    userPic.src = user.photoURL || '';
+    userPic.classList.remove('hidden');
+    
+    syncOnceThenListen(user.uid);
+  } else {
+    dot.className = 'status-dot red';
+    authText.textContent = 'تسجيل الدخول';
+    authIcon.classList.remove('hidden');
+    userPic.classList.add('hidden');
+    
+    if (unsubscribeSync) {
+        unsubscribeSync();
+        unsubscribeSync = null;
+    }
+    
+    // إذا مافي تسجيل دخول، بنقرأ من الذاكرة المحلية
+    transactions = JSON.parse(localStorage.getItem('abuFayezDB')) || [];
+    globalRate = localStorage.getItem('abuFayezRate') || 15000;
+    document.getElementById('global-rate').value = globalRate;
+    updateTotals();
+    if(document.getElementById('view-list').classList.contains('active')) renderList();
+  }
+});
+
+function toggleAuth() {
+    document.getElementById('menu').classList.remove('active');
+    if (currentUser) {
+        document.getElementById('confirm-title').innerText = 'تسجيل الخروج';
+        document.getElementById('confirm-msg').innerText = 'هل تريد تسجيل الخروج؟ سيتم إخفاء بياناتك من الشاشة لحمايتها.';
+        history.pushState({ page: history.state ? history.state.page : 'home', overlay: true }, '');
+        document.getElementById('custom-confirm').classList.add('active');
+        
+        document.getElementById('confirm-yes-btn').onclick = () => {
+            auth.signOut().then(() => {
+                localStorage.removeItem('abuFayezDB');
+                transactions = [];
+                updateTotals();
+                if(document.getElementById('view-list').classList.contains('active')) renderList();
+                history.back(); // إغلاق نافذة التأكيد
+                setTimeout(() => customAlert('تم تسجيل الخروج وتأمين بياناتك.'), 300);
+            });
+        };
+    } else {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(error => {
+            customAlert('فشل تسجيل الدخول: ' + error.message);
+        });
+    }
+}
+
+function mergeLocalAndCloud(cloudData) {
+  let localTx = JSON.parse(localStorage.getItem('abuFayezDB')) || [];
+  let localRate = localStorage.getItem('abuFayezRate');
+  
+  if (!localTx.length) {
+      return cloudData || { transactions: [], globalRate: localRate || 15000 };
+  }
+  if (!cloudData || !cloudData.transactions) {
+      return { transactions: localTx, globalRate: localRate || 15000 };
+  }
+
+  // دمج العمليات بدون تكرار
+  let mergedTx = [...cloudData.transactions];
+  localTx.forEach(ltx => {
+      if (!mergedTx.find(ctx => ctx.id === ltx.id)) {
+          mergedTx.push(ltx);
+      }
+  });
+  
+  localStorage.removeItem('abuFayezDB');
+  return {
+      transactions: mergedTx,
+      globalRate: localRate || cloudData.globalRate || 15000
+  };
+}
+
+function syncOnceThenListen(uid) {
+  const userRef = firestore.collection('masroufi_users').doc(uid);
+  userRef.get().then(doc => {
+      let cloudData = doc.exists ? doc.data() : null;
+      let merged = mergeLocalAndCloud(cloudData);
+      transactions = merged.transactions;
+      globalRate = merged.globalRate;
+      document.getElementById('global-rate').value = globalRate;
+      
+      saveDB(); // حفظ البيانات المدمجة للسحابة
+      setupRealtimeListener(uid);
+  }).catch(err => {
+      setupRealtimeListener(uid);
+  });
+}
+
+function setupRealtimeListener(uid) {
+  unsubscribeSync = firestore.collection('masroufi_users').doc(uid).onSnapshot(docSnap => {
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      if(data.transactions) transactions = data.transactions;
+      if(data.globalRate) {
+          globalRate = data.globalRate;
+          document.getElementById('global-rate').value = globalRate;
+      }
+    }
+    updateTotals();
+    if(document.getElementById('view-list').classList.contains('active')) renderList();
+  }, error => {
+    console.error('Sync Error:', error.message);
+  });
+}
+
+function saveDB() {
+  if (currentUser) {
+    firestore.collection('masroufi_users').doc(currentUser.uid).set({
+        transactions: transactions,
+        globalRate: globalRate
+    }).catch(error => {
+        console.error('Error saving to cloud:', error.message);
+    });
+  } else {
+    localStorage.setItem('abuFayezDB', JSON.stringify(transactions));
+    localStorage.setItem('abuFayezRate', globalRate);
+  }
+}
+
+// ====== باقي نظام التطبيق ======
 
 // نظام التاريخ (History API) لزر الرجوع
 if (!history.state || !history.state.page) { history.replaceState({ page: 'home' }, ''); }
@@ -25,7 +186,6 @@ window.addEventListener('popstate', (e) => {
     else { showView('view-home'); }
 });
 
-// إخفاء القائمة عند الضغط في أي مكان فارغ (يعمل كزر رجوع)
 document.addEventListener('click', function(e) {
     const menu = document.getElementById('menu');
     const menuBtn = document.getElementById('menuBtn');
@@ -66,7 +226,16 @@ function handleMenuAction(action) {
         if(action === 'list') gotoListView('all');
         else if(action === 'export') exportData();
         else if(action === 'import') document.getElementById('importFile').click();
-        else if(action === 'clear') openModal('clear-modal');
+        else if(action === 'clear') {
+            document.getElementById('confirm-title').innerText = 'حذف كل البيانات؟';
+            document.getElementById('confirm-msg').innerText = 'متأكد بدك تمسح السجل بالكامل؟';
+            history.pushState({ page: history.state ? history.state.page : 'home', overlay: true }, '');
+            document.getElementById('custom-confirm').classList.add('active');
+            
+            document.getElementById('confirm-yes-btn').onclick = () => {
+                executeClearAll();
+            };
+        }
     }, 50);
 }
 
@@ -84,9 +253,9 @@ function customAlert(msg, title = 'تنبيه') {
 function updateGlobalRate() { 
     globalRate = document.getElementById('global-rate').value; 
     if(globalRate) { 
-        localStorage.setItem('abuFayezRate', globalRate); 
+        saveDB();
         calcCurrency('usd'); 
-        updateTotals(); // لتتحدث الواجهة فوراً
+        updateTotals();
     }
 }
 
@@ -212,6 +381,7 @@ function cancelPress() {
 
 function requestMultiDelete() {
     if(selectedIds.size === 0) { customAlert('مو محدد شي للحذف!'); return; }
+    document.getElementById('confirm-title').innerText = 'تأكيد الحذف';
     document.getElementById('confirm-msg').innerText = `حذف ${selectedIds.size} عملية؟`;
     history.replaceState({ page: history.state.page, overlay: true }, '');
     document.getElementById('custom-confirm').classList.add('active');
@@ -225,8 +395,6 @@ function requestMultiDelete() {
 
 function deleteSingleAction() { transactions = transactions.filter(t => t.id !== selectedActionId); saveDB(); history.back(); renderList(); }
 function executeClearAll() { transactions = []; saveDB(); history.back(); updateTotals(); }
-function saveDB() { localStorage.setItem('abuFayezDB', JSON.stringify(transactions)); }
-function toggleSort() { sortAsc = !sortAsc; document.getElementById('sortBtn').innerText = sortAsc ? 'الأقدم ⇅' : 'الأحدث ⇅'; renderList(); }
 
 function exportData() { const a = document.createElement('a'); a.href = 'data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(transactions)); a.download = 'masrofi.json'; a.click(); }
 function importData(e) { 
