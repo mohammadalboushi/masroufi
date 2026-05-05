@@ -129,8 +129,18 @@ function updateTotals() {
     document.getElementById('tot-buy-usd').innerText = `$${formatEn(s['مشتريات'].u)}`;
     document.getElementById('tot-buy-syp').innerText = `${formatEn(s['مشتريات'].l)} ل.س`;
     
-    document.getElementById('tot-rem-usd').innerText = `$${formatEn(s['تصميد'].u - s['حوالة'].u - s['مشتريات'].u)}`;
-    document.getElementById('tot-rem-syp').innerText = `${formatEn(s['تصميد'].l - s['حوالة'].l - s['مشتريات'].l)} ل.س`;
+    // المحاسبة الجديدة:
+    let remSaveUsd = s['تصميد'].u - s['حوالة'].u;
+    let remSaveSyp = s['تصميد'].l - s['حوالة'].l;
+    
+    let remPocketUsd = s['حوالة'].u - s['مشتريات'].u;
+    let remPocketSyp = s['حوالة'].l - s['مشتريات'].l;
+
+    document.getElementById('tot-rem-save-usd').innerText = `$${formatEn(remSaveUsd)}`;
+    document.getElementById('tot-rem-save-syp').innerText = `${formatEn(remSaveSyp)} ل.س`;
+
+    document.getElementById('tot-rem-pocket-usd').innerText = `$${formatEn(remPocketUsd)}`;
+    document.getElementById('tot-rem-pocket-syp').innerText = `${formatEn(remPocketSyp)} ل.س`;
 }
 
 function renderList() {

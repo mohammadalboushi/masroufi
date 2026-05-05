@@ -43,9 +43,17 @@
 
     <div id="view-home" class="view active">
         <div class="wallet-card" onclick="gotoListView('all')">
-            <p>الصافي (الباقي)</p>
-            <h1 id="tot-rem-usd">$0</h1>
-            <div class="syp-val" id="tot-rem-syp">0 ل.س</div>
+            <div class="wallet-half">
+                <p>باقي التصميد</p>
+                <h1 id="tot-rem-save-usd">$0</h1>
+                <div class="syp-val" id="tot-rem-save-syp">0 ل.س</div>
+            </div>
+            <div class="wallet-divider"></div>
+            <div class="wallet-half">
+                <p>الباقي معي</p>
+                <h1 id="tot-rem-pocket-usd">$0</h1>
+                <div class="syp-val" id="tot-rem-pocket-syp">0 ل.س</div>
+            </div>
         </div>
 
         <div class="sub-cards">
